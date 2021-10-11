@@ -2,14 +2,6 @@ import { WebSocket } from "ws";
 
 import type { Server } from "./Server";
 
-/*
- |--------------------------------------------------------------------------------
- | Room
- |--------------------------------------------------------------------------------
- */
-
-//#region
-
 export class Channel {
   public clients = new Set<WebSocket>();
 
@@ -35,17 +27,18 @@ export class Channel {
   /**
    * Emit a broadcast to all clients within the assigned rooms.
    *
+   * @remarks
+   *
+   * If a client is part of one or more of the assigned rooms, the event is only
+   * broadcast once regardless of how many rooms the client is connectd to.
+   *
+   *
    * @example
    *
    * ```ts
    * server.to(channelId).emit("foo", { bar: "foobar" }); // => emit to all clients
    * socket.to(channelId).emit("foo", { bar: "foobar" }); // => emit to specific client
    * ```
-   *
-   * @remarks
-   *
-   * If a client is part of one or more of the assigned rooms, the event is only
-   * broadcast once regardless of how many rooms the client is connectd to.
    *
    */
   public emit(type: string, data: Record<string, unknown> = {}) {
@@ -56,5 +49,3 @@ export class Channel {
     }
   }
 }
-
-//#endregion

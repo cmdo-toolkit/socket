@@ -1,53 +1,15 @@
 import * as http from "http";
-import { URL } from "url";
 import { WebSocket, WebSocketServer } from "ws";
 
-import type { Action } from "./Action";
+import { ActionHandlersNotFoundError } from "../Errors/Server";
+import type { Action } from "../Types/Action";
+import type { Settings } from "../Types/Server";
+import { getPathname } from "../Utils/Server";
 import * as responses from "./Action";
 import { Channel } from "./Channel";
 import { Client } from "./Client";
 import { Message } from "./Message";
 import { Route } from "./Route";
-
-/*
- |--------------------------------------------------------------------------------
- | Types
- |--------------------------------------------------------------------------------
- */
-
-//#region
-
-type Settings = {
-  urlPath: string;
-};
-
-//#endregion
-
-/*
- |--------------------------------------------------------------------------------
- | Errors
- |--------------------------------------------------------------------------------
- */
-
-//#region
-
-class ActionHandlersNotFoundError extends Error {
-  public readonly type = "ActionHandlersNotFoundError";
-
-  constructor(type: string) {
-    super(`Socket Message Violation: Provided message type '${type}' has no registered handlers`);
-  }
-}
-
-//#endregion
-
-/*
- |--------------------------------------------------------------------------------
- | Server
- |--------------------------------------------------------------------------------
- */
-
-//#region
 
 export class Server {
   public readonly routes = new Map<string, Action[]>();
@@ -71,8 +33,6 @@ export class Server {
    |--------------------------------------------------------------------------------
    */
 
-  //#region
-
   public set server(server: WebSocketServer) {
     this._server = server;
   }
@@ -88,15 +48,11 @@ export class Server {
     return this.server.clients;
   }
 
-  //#endregion
-
   /*
    |--------------------------------------------------------------------------------
    | Setup
    |--------------------------------------------------------------------------------
    */
-
-  //#region
 
   public register(routes: Route[]) {
     for (const route of routes) {
@@ -104,15 +60,11 @@ export class Server {
     }
   }
 
-  //#endregion
-
   /*
    |--------------------------------------------------------------------------------
    | Connect
    |--------------------------------------------------------------------------------
    */
-
-  //#region
 
   public connect(portOrServer: number | http.Server): void {
     if (typeof portOrServer === "number") {
@@ -156,15 +108,11 @@ export class Server {
     });
   }
 
-  //#endregion
-
   /*
    |--------------------------------------------------------------------------------
    | Rooms
    |--------------------------------------------------------------------------------
    */
-
-  //#region
 
   /**
    * Assign provided socket to the provided room.
@@ -190,15 +138,11 @@ export class Server {
     return this;
   }
 
-  //#endregion
-
   /*
    |--------------------------------------------------------------------------------
    | Emitters
    |--------------------------------------------------------------------------------
    */
-
-  //#region
 
   /**
    * Broadcast a event to all clients.
@@ -219,15 +163,11 @@ export class Server {
     return new Channel(this).to(channelId);
   }
 
-  //#endregion
-
   /*
    |--------------------------------------------------------------------------------
    | Listeners
    |--------------------------------------------------------------------------------
    */
-
-  //#region
 
   private async onMessage(client: Client, str: string): Promise<void> {
     let message: Message | undefined;
@@ -257,15 +197,11 @@ export class Server {
     }
   }
 
-  //#endregion
-
   /*
    |--------------------------------------------------------------------------------
    | Utilities
    |--------------------------------------------------------------------------------
    */
-
-  //#region
 
   private getActions(type: string): Action[] {
     const actions = this.routes.get(type);
@@ -274,22 +210,4 @@ export class Server {
     }
     return actions;
   }
-
-  //#endregion
 }
-
-//#endregion
-
-/*
- |--------------------------------------------------------------------------------
- | Utilities
- |--------------------------------------------------------------------------------
- */
-
-//#region
-
-function getPathname(req: any): string {
-  return new URL(req.url, req.protocol + "://" + req.headers.host + "/").pathname;
-}
-
-//#endregion

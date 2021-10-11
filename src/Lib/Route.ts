@@ -1,12 +1,4 @@
-import type { Action } from "./Action";
-
-/*
- |--------------------------------------------------------------------------------
- | Route
- |--------------------------------------------------------------------------------
- */
-
-//#region
+import type { Action } from "../Types/Action";
 
 export class Route {
   public readonly event: string;
@@ -17,19 +9,7 @@ export class Route {
     this.actions = actions;
   }
 
-  /*
-   |--------------------------------------------------------------------------------
-   | Factories
-   |--------------------------------------------------------------------------------
-   */
-
-  //#region
-
   public static on(path: string, actions: Action[]): Route {
     return new Route(path, actions);
   }
-
-  //#endregion
 }
-
-//#endregion

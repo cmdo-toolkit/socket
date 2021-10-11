@@ -1,30 +1,9 @@
 import { WebSocket } from "ws";
 
+import type { SocketClient } from "../Types/Client";
 import { Channel } from "./Channel";
 import type { Server } from "./Server";
 import { uuid } from "./Utils";
-
-/*
- |--------------------------------------------------------------------------------
- | Interfaces
- |--------------------------------------------------------------------------------
- */
-
-//#region
-
-interface SocketClient {
-  id: string;
-}
-
-//#endregion
-
-/*
- |--------------------------------------------------------------------------------
- | Client
- |--------------------------------------------------------------------------------
- */
-
-//#region
 
 export class Client implements SocketClient {
   public id: string;
@@ -90,5 +69,3 @@ export class Client implements SocketClient {
     return this;
   }
 }
-
-//#endregion
