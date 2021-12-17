@@ -6,10 +6,15 @@ import type { Server } from "./Server";
 import { uuid } from "./Utils";
 
 export class Client implements SocketClient {
-  public id: string;
+  public readonly clientId: string;
 
-  constructor(public readonly server: Server, public readonly socket: WebSocket) {
-    this.id = uuid();
+  public readonly server: Server;
+  public readonly socket: WebSocket;
+
+  constructor(server: Server, socket: WebSocket) {
+    this.clientId = uuid();
+    this.server = server;
+    this.socket = socket;
   }
 
   /**
@@ -36,9 +41,10 @@ export class Client implements SocketClient {
    * @returns Client
    */
   public broadcast(type: string, data: Record<string, unknown> = {}) {
+    const message = JSON.stringify({ type, data });
     for (const client of this.server.clients) {
       if (client !== this.socket && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type, data }));
+        client.send(message);
       }
     }
     return this;
@@ -48,14 +54,15 @@ export class Client implements SocketClient {
    * Broadcast a event to all clients in the provided room except this client.
    */
   public to(channelId: string): Channel {
-    return new Channel(this.server, new Map<WebSocket, boolean>().set(this.socket, true)).to(channelId);
+    const excluded = new Map<WebSocket, boolean>().set(this.socket, true);
+    return new Channel(channelId, this.server, excluded);
   }
 
   /**
    * Assign client to server channel.
    */
   public join(channelId: string) {
-    console.log(`WebSocket Channel > Client ${this.id} entered ${channelId}`);
+    console.log(`WebSocket Channel > Client ${this.clientId} entered ${channelId}`);
     this.server.join(channelId, this.socket);
     return this;
   }
@@ -64,7 +71,7 @@ export class Client implements SocketClient {
    * Remove client from a server channel.
    */
   public leave(channelId: string) {
-    console.log(`WebSocket Channel > Client ${this.id} left ${channelId}`);
+    console.log(`WebSocket Channel > Client ${this.clientId} left ${channelId}`);
     this.server.leave(channelId, this.socket);
     return this;
   }

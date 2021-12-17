@@ -4,6 +4,7 @@
 
     "allowSyntheticDefaultImports": true,
     "useUnknownInCatchVariables": false,
+    "experimentalDecorators": true,
 
     "target": "es6",
     "module": "commonjs",

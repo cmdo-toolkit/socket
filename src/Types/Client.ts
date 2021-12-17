@@ -1,3 +1,3 @@
 export interface SocketClient {
-  id: string;
+  clientId: string;
 }

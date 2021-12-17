@@ -1,4 +1,5 @@
 import * as http from "http";
+import Redis from "ioredis";
 import { WebSocket, WebSocketServer } from "ws";
 
 import { ActionHandlersNotFoundError } from "../Errors/Server";
@@ -18,11 +19,13 @@ export class Server {
   public readonly settings: Settings;
   public readonly actions: Action[];
 
-  private _server?: WebSocketServer;
+  public instance?: WebSocketServer;
+  public redis?: InstanceType<typeof Redis>;
 
   constructor(settings?: Partial<Settings>, actions: Action[] = []) {
     this.settings = {
-      urlPath: settings?.urlPath ?? "/socket"
+      urlPath: settings?.urlPath ?? "/socket",
+      redis: settings?.redis
     };
     this.actions = actions;
   }
@@ -34,14 +37,14 @@ export class Server {
    */
 
   public set server(server: WebSocketServer) {
-    this._server = server;
+    this.instance = server;
   }
 
   public get server(): WebSocketServer {
-    if (!this._server) {
+    if (!this.instance) {
       throw new Error("WebSocket Server Violation > Server instance has not been assigned!");
     }
-    return this._server;
+    return this.instance;
   }
 
   public get clients() {
@@ -74,6 +77,7 @@ export class Server {
       this.addUpgradeListener(portOrServer);
     }
     this.addConnectionListener();
+    this.addRedisListener();
   }
 
   private addUpgradeListener(httpServer: http.Server): void {
@@ -93,7 +97,7 @@ export class Server {
     this.server.on("connection", (socket) => {
       const client = new Client(this, socket);
 
-      console.log(`WebSocket Server > Client ${client.id} connected.`);
+      console.log(`WebSocket Server > Client ${client.clientId} connected.`);
 
       socket.on("message", (data, isBinary) => {
         const message = isBinary ? data : data.toString();
@@ -103,8 +107,25 @@ export class Server {
       });
 
       socket.on("close", (code, data) => {
-        console.log(`WebSocket Server > Client ${client.id} disconnected > ${code} ${data.toString()}`);
+        console.log(`WebSocket Server > Client ${client.clientId} disconnected > ${code} ${data.toString()}`);
       });
+    });
+  }
+
+  private addRedisListener(): void {
+    if (this.settings.redis === undefined) {
+      return; // redis has not been configured so we skip the this operation
+    }
+
+    this.redis = new Redis(this.settings.redis);
+
+    this.redis.on("message", (channel: string, message: string) => {
+      const { type, data } = JSON.parse(message);
+      if (channel === "broadcast") {
+        this.broadcast(type, data, false);
+      } else {
+        this.to(channel).emit(type, data);
+      }
     });
   }
 
@@ -134,6 +155,9 @@ export class Server {
     const channel = this.channels.get(channelId);
     if (channel) {
       channel.delete(socket);
+      if (channel.size < 1) {
+        this.channels.delete(channelId);
+      }
     }
     return this;
   }
@@ -147,11 +171,15 @@ export class Server {
   /**
    * Broadcast a event to all clients.
    */
-  public broadcast(type: string, data: Record<string, unknown> = {}): this {
+  public broadcast(type: string, data: Record<string, unknown> = {}, origin = true): this {
+    const message = JSON.stringify({ type, data });
     for (const client of this.server.clients) {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type, data }));
+        client.send(message);
       }
+    }
+    if (origin) {
+      this.redis?.publish("broadcast", message);
     }
     return this;
   }
@@ -160,7 +188,7 @@ export class Server {
    * Broadcast a event to all clients in the provided channel.
    */
   public to(channelId: string): Channel {
-    return new Channel(this).to(channelId);
+    return new Channel(channelId, this);
   }
 
   /*
